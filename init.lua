@@ -91,7 +91,8 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+-- vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -102,7 +103,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -213,7 +214,14 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   local lazyrepo = 'https://github.com/folke/lazy.nvim.git'
-  local out = vim.fn.system { 'git', 'clone', '--filter=blob:none', '--branch=stable', lazyrepo, lazypath }
+  local out = vim.fn.system {
+    'git',
+    'clone',
+    '--filter=blob:none',
+    '--branch=stable',
+    lazyrepo,
+    lazypath,
+  }
   if vim.v.shell_error ~= 0 then
     error('Error cloning lazy.nvim:\n' .. out)
   end
@@ -600,7 +608,10 @@ require('lazy').setup({
               group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
               callback = function(event2)
                 vim.lsp.buf.clear_references()
-                vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
+                vim.api.nvim_clear_autocmds {
+                  group = 'kickstart-lsp-highlight',
+                  buffer = event2.buf,
+                }
               end,
             })
           end
@@ -673,7 +684,7 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
+        ts_ls = {},
         --
 
         lua_ls = {
@@ -690,6 +701,12 @@ require('lazy').setup({
             },
           },
         },
+        cssls = {},
+        html = {},
+        docker_compose_language_service = {},
+        eslint = {},
+        intelephense = {},
+        jdtls = {}, -- for nvim-jdtls
       }
 
       -- Ensure the servers and tools above are installed
@@ -708,8 +725,13 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'black',
+        'isort',
+        'php-cs-fixer',
       })
-      require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+      require('mason-tool-installer').setup {
+        ensure_installed = ensure_installed,
+      }
 
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
@@ -721,6 +743,12 @@ require('lazy').setup({
             -- by the server configuration above. Useful when disabling
             -- certain features of an LSP (for example, turning off formatting for ts_ls)
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+
+            -- Prefer manual startup
+            if server_name == 'jdtls' then
+              return
+            end
+
             require('lspconfig')[server_name].setup(server)
           end,
         },
@@ -734,7 +762,7 @@ require('lazy').setup({
     cmd = { 'ConformInfo' },
     keys = {
       {
-        '<leader>f',
+        '<leader>f ',
         function()
           require('conform').format { async = true, lsp_format = 'fallback' }
         end,
@@ -761,12 +789,20 @@ require('lazy').setup({
         }
       end,
       formatters_by_ft = {
+        -- How to solve error: Unknown formatter. Formatter config missing or incomplete
+        -- Use names in https://github.com/stevearc/conform.nvim?tab=readme-ov-file#formatters
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
-        --
+        python = { 'isort', 'black' },
+        php = { 'php_cs_fixer' },
+        -- html = { 'prettier' },
+        css = { 'prettier' },
+        -- cs = { 'omnisharp', 'csharpier' },
+
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'prettier', stop_after_first = true },
+        java = { 'google-java-format' },
       },
     },
   },
@@ -912,7 +948,12 @@ require('lazy').setup({
   },
 
   -- Highlight todo, notes, etc in comments
-  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
+  {
+    'folke/todo-comments.nvim',
+    event = 'VimEnter',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    opts = { signs = false },
+  },
 
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
@@ -957,7 +998,19 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -989,20 +1042,26 @@ require('lazy').setup({
   -- require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
+
+  {
+    'mfussenegger/nvim-jdtls',
+    lazy = true,
+    ft = { 'java' },
+  },
 }, {
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
@@ -1025,5 +1084,71 @@ require('lazy').setup({
   },
 })
 
--- The line beneath this is called `modeline`. See `:help modeline`
+-- My Stuff
+vim.o.foldcolumn = 'auto'
+
+vim.keymap.set('i', 'jk', '<Esc>', { desc = 'Exit insert mode with jk' })
+
+-- vim.keymap.set('n', '<leader>ff', builtin.help_tags, { desc = '[S]earch [H]elp' })
+vim.keymap.set('n', '<leader>ff', vim.lsp.buf.format, { desc = '[F]orce [F]ormat' })
+vim.keymap.set('n', '<C-u>', '<C-u>zz', { desc = '' })
+vim.keymap.set('n', '<C-d>', '<C-d>zz', { desc = '' })
+vim.keymap.set('n', '<leader>sj', '<cmd>Telescope jumplist<CR>', { desc = '[S]earch [J]umplist' })
+
+vim.opt.fillchars = {
+  horiz = '━',
+  horizup = '┻',
+  horizdown = '┳',
+  vert = '┃',
+  vertleft = '┫',
+  vertright = '┣',
+  verthoriz = '╋',
+}
+
+vim.api.nvim_set_hl(0, 'WinSeparator', { fg = 'lightslategray', bold = true })
+vim.env.TEMPLATES = '$HOME/Templates'
+vim.api.nvim_create_user_command('TemplateHTML', ':0r $TEMPLATES/html/index.html', {})
+vim.api.nvim_create_user_command('TemplateJS', ':0r $TEMPLATES/html/index.html', {})
+
+vim.api.nvim_create_autocmd('TermOpen', {
+  group = vim.api.nvim_create_augroup('custom-term-open', { clear = true }),
+  callback = function()
+    vim.opt.number = false
+    vim.opt.relativenumber = false
+  end,
+})
+
+vim.keymap.set('n', '<leader>tb', function()
+  vim.cmd.vnew()
+  vim.cmd.term()
+  vim.cmd.wincmd 'J' -- Drag window to Bottom
+  vim.api.nvim_win_set_height(0, 5) -- current window to height 5 lines
+end, {
+  desc = 'New terminal bottom',
+})
+
+-- Scratch buffer
+vim.keymap.set('n', '<leader>scb', function()
+  vim.cmd.new()
+  vim.opt_local.filetype = 'markdown'
+  vim.opt_local.hidden = true
+  vim.opt_local.swapfile = false
+  vim.api.nvim_win_set_height(0, 5) -- current window to height 5 lines
+end, { desc = 'Open [S][C]ratch pad [B]elow' })
+
+vim.keymap.set('n', '<M-j>', '<cmd>cnext<CR>', { desc = 'Quickfix List Next' })
+vim.keymap.set('n', '<M-k>', '<cmd>cprev<CR>', { desc = 'Quickfix List Previous' })
+
+-- TODO: think about keeping this?
+vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+vim.opt_local.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+vim.opt.foldlevel = 6
+
+vim.opt_local.colorcolumn = { 81, 120 }
+
+vim.g.tex_flavor = 'plaintex'
+vim.opt_local.spelllang = { 'en_gb', 'en_us' }
+vim.g.netrw_liststyle = 3
+
+-- Theline beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
